@@ -1,0 +1,6 @@
+boto3==1.13.19
+falcon==2.0.0
+waitress==1.4.3
+hupper==1.10.2
+cerberus==1.3.2
+invoke==1.4.0

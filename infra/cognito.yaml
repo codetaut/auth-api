@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cognito pool
+
+Parameters:
+  Env:
+    Type: String
+    Default: sbx
+    AllowedValues:
+      - prd
+      - tst
+      - dev
+      - stg
+      - sbx
+  Owner:
+    Description: Email id of the creator of this bucket
+    Type: String
+    AllowedPattern: [\p{L}\p{M}\p{S}\p{N}\p{P}]+@[\p{L}\p{M}\p{S}\p{N}\p{P}]+
+  Related:
+    Description: Name of the solutions that a resource related to
+    Type: String
+  ReplyToEmailAddress:
+    Description: Reply to email address
+    Type: String
+    AllowedPattern: [\p{L}\p{M}\p{S}\p{N}\p{P}]+@[\p{L}\p{M}\p{S}\p{N}\p{P}]+
+    Default: codetaut@gmail.com
+
+Resources:
+
+  CodetautUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub codetaut-auth-${Env}-userpool
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        InviteMessageTemplate:
+          EmailMessage: !Sub |
+            Hello, <br>
+
+            You have been invited to join Codetaut. <br>
+
+            Your username is {username} and temporary password is {####}. <br>
+
+            You can log in at https://${PortalCloudFrontDomain} where you will be asked to reset your password. <br>
+
+            Cheers, <br>
+
+            Codetaut Team  <br>
+          EmailSubject: You have an invitation to join Codetaut
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        ReplyToEmailAddress: !Ref ReplyToEmailAddress
+      EmailVerificationMessage: |
+        Hello Partner,  <br>
+
+        Your verification code is {####}.   <br>
+
+        Please enter this in to complete the signup process.  <br>
+
+        Kind regards,  <br>
+
+        The EMIS Partner Team  <br>
+
+        EMIS Group plc is a company registered in England and Wales. Registered number: 06553923. Registered office: Fulford Grange, Micklefield Lane, Leeds, LS19 6BA. <br>
+      EmailVerificationSubject: Your verification link
+      MfaConfiguration: 'OFF'
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 10
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+          RequireLowercase: true
+          TemporaryPasswordValidityDays: 7
+      Schema:
+        - AttributeDataType: String
+          Mutable: true
+          Name: 'email'
+          Required: true
+        - AttributeDataType: String
+          Mutable: true
+          Name: 'email'
+          Required: true
+        - AttributeDataType: String
+          Mutable: true
+          Name: 'full_name'
+          Required: true
+        - AttributeDataType: String
+          Mutable: true
+          Name: 'phone'
+      UsernameAttributes:
+        - email
+        - phone
+      UsernameConfiguration:
+        CaseSensitive: false
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_LINK
+      UserPoolTags:
+        Env: !Ref Env
+        Owner: !Ref Owner
+        Related: !Ref Related
+
+  CodetautUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CodetautUserPool
+      ClientName: codetaut-auth-${Env}-userpool-client
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - http://localhost/
+      LogoutURLs:
+        - http://localhost/
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthScopes:
+        - phone
+        - email
+        - openid
+        - aws.cognito.signin.user.admin
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+
+  AdminUserGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      Description: Admin group
+      GroupName: admin
+      UserPoolId: !Ref PartnerPortalUserPool
+
+Outputs:
+  UserPool:
+    Value: !Ref CodetautUserPool
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+  Client:
+    Value: !Ref CodetautUserPoolClient
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClient
